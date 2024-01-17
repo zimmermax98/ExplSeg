@@ -27,8 +27,7 @@ def get_data(args: argparse.Namespace):
     random.seed(args.seed)
     np.random.seed(args.seed)
     if args.dataset =='CUB-200-2011':
-        #data_root = '/fastdata/MT_ExplSeg/datasets/CUB_200_2011/dataset/' 
-        data_root = '/Volumes/ExtM2/MT_ExplSeg/datasets/CUB_200_2011/dataset/'
+        data_root = '/fastdata/MT_ExplSeg/datasets/CUB_200_2011/dataset/'
         return get_birds(True, data_root + 'train_crop', data_root + 'train', data_root + 'test_crop', args.image_size, args.seed, args.validation_size, data_root + 'train', data_root + 'test_full')
     if args.dataset == 'pets':
         data_root = '/fastdata/MT_ExplSeg/datasets/oxford-iiit-pet/dataset/'
@@ -41,8 +40,7 @@ def get_data(args: argparse.Namespace):
     if args.dataset == 'grayscale_example':
         return get_grayscale(True, './data/train', './data/train', './data/test', args.image_size, args.seed, args.validation_size)
     if args.dataset == 'VOC':
-        #data_root = '/fastdata/MT_ExplSeg/datasets/VOC/'
-        data_root = '/Volumes/ExtM2/MT_ExplSeg/datasets/VOC/'
+        data_root = '/fastdata/MT_ExplSeg/datasets/VOC/'
         return get_voc(True, data_root, args.image_size, args.task)
     raise Exception(f'Could not load data set, data set "{args.dataset}" not found!')
 

@@ -49,20 +49,6 @@
             ]
         },
         {
-            "name": "ProtoSegPIP Train",
-            "type": "python",
-            "request": "launch",
-            "module": "segmentation.train",
-            "justMyCode": false,
-            "cwd": "~/ExplSeg/ProtoSegPIP",
-            "args": [
-                //"cityscapes_kld_imnet",
-                //"cityscapes_debug",
-                "pascal_kld_imnet", 
-                "pascal_run",
-            ]
-        },
-        {
             "name": "ProtoSeg Pruning",
             "type": "python",
             "request": "launch",
@@ -104,10 +90,10 @@
             ]
         },
         {
-            "name": "ProtoSeg Explanations",
+            "name": "ProtoSeg Agreement Task",
             "type": "python",
             "request": "launch",
-            "module": "segmentation.hive_explanations_seg",
+            "module": "segmentation.agreement_task",
             "justMyCode": true,
             "cwd": "~/ExplSeg/ProtoSeg",
             "args": [
@@ -257,6 +243,15 @@
             "python": "~/anaconda3/envs/L-CRP/bin/python", 
             "request": "launch",
             "module": "experiments.plot_crp_explanation",
+            "justMyCode": false,
+            "cwd": "~/ExplSeg/L-CRP"
+        },
+        {
+            "name": "L-CRP: Agreement Task",
+            "type": "python",
+            "python": "~/anaconda3/envs/L-CRP/bin/python", 
+            "request": "launch",
+            "module": "experiments.agreement_task",
             "justMyCode": false,
             "cwd": "~/ExplSeg/L-CRP"
         },

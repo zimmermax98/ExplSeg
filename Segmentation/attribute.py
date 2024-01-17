@@ -170,7 +170,6 @@ def visualize_attribution(attribution_map, original_img=None):
 
 def main():
     opts = get_argparser().parse_args()
-    opts.data_root = "/Volumes/ExtM2/MT_ExplSeg/datasets"
     torch.manual_seed(1)
     np.random.seed(1)
 
