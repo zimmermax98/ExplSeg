@@ -207,6 +207,7 @@ def vis_opaque_img_border(data_batch, heatmaps, rf=False, alpha=0.5, vis_th=0.05
         raise ValueError("'crop_th' must be between [0, 1)")
 
     imgs = []
+    imgs_orig = []
     for i in range(len(data_batch)):
 
         img = data_batch[i]
@@ -240,8 +241,9 @@ def vis_opaque_img_border(data_batch, heatmaps, rf=False, alpha=0.5, vis_th=0.05
         img.paste(img_, (0, 0), img_)
 
         imgs.append(img.convert('RGB'))
+        imgs_orig.append(img_t)
 
-    return imgs
+    return imgs, imgs_orig
 
 
 def mystroke(img, size: int, color: str = 'black'):

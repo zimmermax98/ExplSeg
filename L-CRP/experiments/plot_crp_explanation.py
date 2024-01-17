@@ -50,7 +50,7 @@ EXAMPLES = [{
         "layer": "model.backbone.vgg.28"},
 ]
 
-EXAMPLE = -1
+EXAMPLE = 0
 
 @click.command()
 @click.option("--model_name", default=EXAMPLES[EXAMPLE]["model_name"])
@@ -149,7 +149,7 @@ def main(model_name, dataset_name, sample_id, class_id, layer, prediction_num, m
         cond_heatmap = torch.stack([attr.activations[layer][0][t] for t in topk_ind]).detach().cpu()
 
     print("Computing reference images...")
-    ref_imgs = fv.get_max_reference(topk_ind, layer, mode, (0, n_refimgs), composite=composite, rf=True,
+    ref_imgs, _ = fv.get_max_reference(topk_ind, layer, mode, (0, n_refimgs), composite=composite, rf=True,
                                     plot_fn=vis_opaque_img_border, batch_size=4)
 
     print("Plotting...")

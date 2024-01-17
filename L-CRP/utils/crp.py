@@ -60,7 +60,8 @@ class CondAttributionSegmentation(CondAttribution):
                 if isinstance(target, List):
                     assert len(target) == 1
                     target = target[0]
-                argmax = (torch.argmax(pred, dim=1) == target)[i]
+                if not isinstance(target, Tuple):
+                    argmax = (torch.argmax(pred, dim=1) == target)[i]
                 expl = prediction
                 # print(target_list, self.rel_init)
                 if "zplus" in self.rel_init:
@@ -71,7 +72,14 @@ class CondAttributionSegmentation(CondAttribution):
                     expl = pred
                 if "grad" in self.rel_init:
                     expl = expl / (prediction + 1e-10)
-                r[i, target, :, :] = expl[i, target, :, :] * argmax
+                
+                if isinstance(target, Tuple):
+                    mask = torch.zeros_like(pred[0, 0]).bool()
+                    mask[target[0], target[1]] = True
+                    pred_at_pixel = pred[i, :, target[0], target[1]].argmax()
+                    r[i, pred_at_pixel, :, :] = expl[i, pred_at_pixel, :, :] * mask
+                else:
+                    r[i, target, :, :] = expl[i, target, :, :] * argmax
                 r = r * self.mask
             init_rel = r / (r.sum() + 1e-12)
         else:
@@ -138,6 +146,7 @@ class FeatureVisualizationMultiTarget(FeatureVisualization):
         """
 
         ref_c = {}
+        orig_imgs = {}
         if not isinstance(concept_ids, Iterable):
             concept_ids = [concept_ids]
 
@@ -183,8 +192,9 @@ class FeatureVisualizationMultiTarget(FeatureVisualization):
                 heatmaps = self._attribution_on_reference(data_batch, c_id, layer_name, composite, rf, n_indices,
                                                           batch_size, targets)
 
+                #orig_imgs[c_id] = [x.squeeze(0) for x in torch.split(data_batch_unprocessed, 1)]
                 if callable(plot_fn):
-                    ref_c[c_id] = plot_fn(data_batch_unprocessed.detach(), heatmaps.detach(), rf)
+                    ref_c[c_id], orig_imgs[c_id] = plot_fn(data_batch_unprocessed.detach(), heatmaps.detach(), rf)
                 else:
                     ref_c[c_id] = data_batch_unprocessed.detach().cpu(), heatmaps.detach().cpu()
 
@@ -192,7 +202,7 @@ class FeatureVisualizationMultiTarget(FeatureVisualization):
                 ref_c[c_id] = self._load_ref_and_attribution(d_indices, c_id, n_indices, layer_name, composite, rf,
                                                              plot_fn, batch_size)
 
-        return ref_c
+        return ref_c, orig_imgs
 
     def run_distributed(self, composite: Composite, data_start, data_end, batch_size=16, checkpoint=500,
                         on_device=None):

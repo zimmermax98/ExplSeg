@@ -33,13 +33,13 @@ val_dirs = ["frankfurt/", "munster/", "lindau/"]
 test_dirs = ["berlin", "bielefeld", "bonn", "leverkusen", "mainz", "munich"]
 
 def cityscapes_train(**kwargs) -> torch.utils.data.Dataset:
-    return DatasetTrain(cityscapes_data_path="datasets/cityscapes", cityscapes_meta_path="datasets/cityscapes/meta",
+    return DatasetTrain(cityscapes_data_path="/fastdata/MT_ExplSeg/datasets/cityscapes", cityscapes_meta_path="/fastdata/MT_ExplSeg/datasets/cityscapes/meta",
                         **kwargs)
 
 
 def cityscapes_test(**kwargs) -> torch.utils.data.Dataset:
-    return DatasetVal(cityscapes_data_path="datasets/cityscapes",
-                      cityscapes_meta_path="datasets/cityscapes/meta", **kwargs)
+    return DatasetVal(cityscapes_data_path="/fastdata/MT_ExplSeg/datasets/cityscapes",
+                      cityscapes_meta_path="/fastdata/MT_ExplSeg/datasets/cityscapes/meta", **kwargs)
 
 
 class DatasetTrain(torch.utils.data.Dataset):
@@ -118,7 +118,8 @@ class DatasetTrain(torch.utils.data.Dataset):
 class DatasetVal(torch.utils.data.Dataset):
     def __init__(self, cityscapes_data_path, cityscapes_meta_path, **kwargs):
         self.img_dir = cityscapes_data_path + "/leftImg8bit/val/"
-        self.label_dir = cityscapes_meta_path + "/label_imgs/"
+        #self.label_dir = cityscapes_meta_path + "/label_imgs/"
+        self.label_dir = cityscapes_data_path + "/gtFine/val/"
         self.transforms = test_transforms
         self.reverse_normalization = torchvision.transforms.Compose([
             torchvision.transforms.Normalize(mean=[0, 0, 0], std=[1 / 0.229, 1 / 0.224, 1 / 0.225]),
@@ -133,14 +134,17 @@ class DatasetVal(torch.utils.data.Dataset):
         self.examples = []
         for val_dir in val_dirs:
             val_img_dir_path = self.img_dir + val_dir
+            val_label_img_dir_path = self.label_dir + val_dir
 
             file_names = os.listdir(val_img_dir_path)
             for file_name in file_names:
+                if "leftImg8bit_" in file_name:
+                    continue
                 img_id = file_name.split("_leftImg8bit.png")[0]
 
                 img_path = val_img_dir_path + file_name
 
-                label_img_path = self.label_dir + img_id + ".png"
+                label_img_path = val_label_img_dir_path + img_id + "_gtFine_labelIds.png"
                 label_img = cv2.imread(label_img_path, -1)  # (shape: (1024, 2048))
 
                 example = {}

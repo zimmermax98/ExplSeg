@@ -30,7 +30,7 @@ def voc2012_train(preprocessing=True):
         ExtToTensor(),
         ExtNormalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ])
-    return VOCSegmentation(root="datasets/VOC", year="2012_aug",
+    return VOCSegmentation(root="/fastdata/MT_ExplSeg/datasets/VOC", year="2012_aug",
                            image_set='trainval', download=False, transform=val_transform)
 
 
@@ -41,8 +41,10 @@ def voc2012_test(preprocessing=True):
         ExtToTensor(),
         ExtNormalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ])
-    return VOCSegmentation(root="datasets/VOC", year="2012_aug",
+    return VOCSegmentation(root="/fastdata/MT_ExplSeg/datasets/VOC", year="2012_aug",
                            image_set='trainval', download=False, transform=val_transform)
+    #return VOCSegmentation(root="/fastdata/MT_ExplSeg/datasets/VOC", year="2012",
+    #                       image_set='val', download=False, transform=val_transform)
 
 
 class ExtCompose(object):
