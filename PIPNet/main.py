@@ -155,8 +155,7 @@ def main(args=None):
                     os.path.join(os.path.join(args.log_dir, 'checkpoints'), f'net_pretrained'))
         net.train()
     
-    if args.state_dict_dir_net == '':
-        topk_dict = visualize_topk(net, projectloader, device, 'topk_prototypes_pretrain', args)
+    topk_dict = visualize_topk(net, projectloader, device, 'topk_prototypes_pretrain', args)
 
     # MAIN TRAINING PHASE
     # re-initialize optimizers and schedulers for second training phase
@@ -307,7 +306,8 @@ def main(args=None):
     # visualize
     vis_pred(net, test_projectloader, device, args, n_preds=100)
     # TODO: Skip for now, as visualizing each prototype for segmentation is enormous
-    #visualize(net, projectloader, net.module._num_classes, device, 'visualised_prototypes', args)
+    if args.task == "classification":
+        visualize(net, projectloader, net.module._num_classes, device, 'visualised_prototypes', args)
 
     # EVALUATE OOD DETECTION
     if args.task == "classification":

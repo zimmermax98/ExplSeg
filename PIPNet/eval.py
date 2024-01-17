@@ -67,8 +67,8 @@ def main(args=None):
         net.load_state_dict(checkpoint['model_state_dict'],strict=False) 
         print("Pretrained network loaded")
 
-    #eval_pipnet(args, net, testloader, epoch, device, metrics)
-    #visualize_topk(net, projectloader, device, 'topk_prototypes', args, save_vis=True, use_precomp_topk=True)
+    eval_pipnet(args, net, testloader, epoch, device, metrics)
+    visualize_topk(net, projectloader, device, 'topk_prototypes', args, save_vis=True, use_precomp_topk=True)
     vis_pred(net, test_projectloader, device, args, n_preds=100)
 
 if __name__ == '__main__':
