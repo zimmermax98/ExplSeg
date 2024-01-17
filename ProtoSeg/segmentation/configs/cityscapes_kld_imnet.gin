@@ -33,11 +33,8 @@ PatchClassificationDataModule.dataloader_n_jobs = 8
 PatchClassificationDataModule.train_key = 'train'
 
 PatchClassificationModule.loss_weight_crs_ent = 1.0
-PatchClassificationModule.loss_weight_clst = 0.0
-PatchClassificationModule.loss_weight_sep = 0.0
 PatchClassificationModule.loss_weight_l1 = 1e-4
 PatchClassificationModule.loss_weight_kld = 0.25
-PatchClassificationModule.loss_weight_cls_act = 0.0
 
 PatchClassificationModule.joint_optimizer_lr_features = 2.5e-5
 PatchClassificationModule.joint_optimizer_lr_add_on_layers = 2.5e-4

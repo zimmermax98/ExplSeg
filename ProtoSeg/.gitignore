@@ -176,3 +176,5 @@ pretrained_models
 *.pdf
 *.png
 models/
+
+checkpoints

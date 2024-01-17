@@ -11,11 +11,12 @@ add_on_layers_type = 'regular'
 
 experiment_run = '003'
 
-data_path = os.environ['DATA_PATH']
-train_dir = os.environ['TRAIN_DIR']
-test_dir = os.environ['TEST_DIR']
-train_push_dir = os.environ['TRAIN_PUSH_DIR']
-log_dir = os.environ['LOG_DIR']
+#data_path = "/fastdata/MT_ExplSeg/datasets/cityscapes/ProtoSeg_dataset/"
+data_path = "/fastdata/MT_ExplSeg/datasets/VOC/VOCdevkit/VOC2012/ProtoSeg_dataset/"
+#train_dir = os.environ['TRAIN_DIR']
+#test_dir = os.environ['TEST_DIR']
+#train_push_dir = os.environ['TRAIN_PUSH_DIR']
+log_dir = "./logs"
 
 train_batch_size = 80
 test_batch_size = 100

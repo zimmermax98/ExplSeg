@@ -29,10 +29,10 @@ import multiprocessing
 
 MARGIN_SIZE = 0
 
-SOURCE_PATH = os.environ['SOURCE_DATA_PATH']
-TARGET_PATH = os.environ['DATA_PATH']
-LABELS_PATH = os.path.join(SOURCE_PATH, 'gtFine_trainvaltest/gtFine/')
-IMAGES_PATH = os.path.join(SOURCE_PATH, 'leftImg8bit_trainvaltest/leftImg8bit/')
+SOURCE_PATH = "/fastdata/MT_ExplSeg/datasets/cityscapes/"
+TARGET_PATH = "/fastdata/MT_ExplSeg/datasets/cityscapes/ProtoSeg_dataset/"
+LABELS_PATH = os.path.join(SOURCE_PATH, 'gtFine')
+IMAGES_PATH = os.path.join(SOURCE_PATH, 'leftImg8bit/')
 
 ANNOTATIONS_DIR = os.path.join(TARGET_PATH, 'annotations')
 MARGIN_IMG_DIR = os.path.join(TARGET_PATH, f'img_with_margin_{MARGIN_SIZE}')
@@ -155,4 +155,6 @@ def preprocess_cityscapes_obj_masks(n_jobs: int, chunk_size: int = 10):
 
 
 if __name__ == '__main__':
-    argh.dispatch_commands([preprocess_cityscapes, preprocess_cityscapes_obj_masks])
+    preprocess_cityscapes(n_jobs=8)
+    preprocess_cityscapes_obj_masks(n_jobs=8)
+    #argh.dispatch_commands([preprocess_cityscapes, preprocess_cityscapes_obj_masks])

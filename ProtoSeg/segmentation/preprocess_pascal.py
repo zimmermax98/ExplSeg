@@ -16,8 +16,15 @@ import numpy as np
 import json
 import multiprocessing
 
-SOURCE_PATH = os.environ['SOURCE_DATA_PATH']
-TARGET_PATH = os.environ['DATA_PATH']
+import sys
+sys.path.insert(0, os.path.join(os.path.expanduser("~"), "ExplSeg", "DeepLabV3"))
+from datasets.voc import voc_cmap
+
+cmap = voc_cmap()
+cmap_expand = np.expand_dims(cmap, (0, 1))
+
+SOURCE_PATH = "/fastdata/MT_ExplSeg/datasets/VOC/VOCdevkit/VOC2012"
+TARGET_PATH = "/fastdata/MT_ExplSeg/datasets/VOC/VOCdevkit/VOC2012/ProtoSeg_dataset"
 
 ANNOTATIONS_DIR = os.path.join(TARGET_PATH, 'annotations')
 MARGIN_IMG_DIR = os.path.join(TARGET_PATH, 'img_with_margin_0')
@@ -38,10 +45,11 @@ def process_images_in_chunks(args):
                 img = Image.open(f).convert('RGB')
 
             pix = np.array(img).astype(np.uint8)
-            pix = pix[:, :, 0]
-            unique_classes.update(set(np.unique(pix)))
+            pix_expand = np.expand_dims(pix, 2)
+            classes = np.all(cmap_expand == pix_expand, axis=3).argmax(axis=2)
+            unique_classes.update(set(np.unique(classes)))
             # pix.shape = (height, width, channels)
-            np.save(os.path.join(ANNOTATIONS_DIR, split_key, img_id), pix)
+            np.save(os.path.join(ANNOTATIONS_DIR, split_key, img_id), classes)
 
         # 2. Save image
         input_img_path = os.path.join(SOURCE_PATH, f'JPEGImages/{img_id}.jpg')
@@ -68,12 +76,12 @@ def preprocess_pascal(n_jobs: int, chunk_size: int = 10):
     os.makedirs(MARGIN_IMG_DIR, exist_ok=True)
 
     img_ids = {
-        'train_aug': [], 'train': [], 'val': [], 'test': []
+        'train_aug': [], 'train': [], 'val': []
     }
 
     split_info_dir = os.path.join(SOURCE_PATH, 'ImageSets/SegmentationAug')
 
-    for split_key in tqdm(['train_aug', 'train', 'val', 'test'], desc='preprocessing images'):
+    for split_key in tqdm(['train_aug', 'train', 'val'], desc='preprocessing images'):
         split_img_ids = [img_id.strip().split('/')[-1].split('.')[0]
                          for img_id in open(os.path.join(split_info_dir, f'{split_key}.txt'), 'r')]
 

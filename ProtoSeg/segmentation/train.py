@@ -37,7 +37,7 @@ def train(
         experiment_name: str,
         neptune_experiment: Optional[str] = None,
         pruned: bool = False,
-        start_checkpoint: str = '',
+        start_checkpoint: str = gin.REQUIRED,
         random_seed: int = gin.REQUIRED,
         early_stopping_patience_last_layer: int = gin.REQUIRED,
         warmup_steps: int = gin.REQUIRED,
@@ -49,7 +49,7 @@ def train(
 ):
     seed_everything(random_seed)
 
-    results_dir = os.path.join(os.environ['RESULTS_DIR'], experiment_name)
+    results_dir = os.path.join('./results', experiment_name)
     os.makedirs(results_dir, exist_ok=True)
     log(f'Starting experiment in "{results_dir}" from config {config_path}')
 
@@ -108,7 +108,7 @@ def train(
     csv_logger.log_hyperparams(json_gin_config)
 
     if not pruned:
-        use_neptune = bool(int(os.environ['USE_NEPTUNE']))
+        use_neptune = False #bool(int(os.environ['USE_NEPTUNE']))
         if use_neptune:
             if neptune_experiment is not None:
                 neptune_run = neptune.init(
@@ -140,18 +140,19 @@ def train(
                 training_phase=0,
                 max_steps=warmup_steps,
             )
-            trainer = Trainer(logger=loggers, checkpoint_callback=None, enable_progress_bar=False,
+            trainer = Trainer(logger=loggers, checkpoint_callback=None, enable_progress_bar=True,
                               min_steps=1, max_steps=warmup_steps)
             trainer.fit(model=module, datamodule=data_module)
             current_epoch = trainer.current_epoch
         else:
             current_epoch = -1
 
-        last_checkpoint = os.path.join(results_dir, 'checkpoints/warmup_last.pth')
-        if os.path.exists(last_checkpoint):
-            log(f'Loading model after warmup from {last_checkpoint}')
-            ppnet = torch.load(last_checkpoint)
-            ppnet = ppnet.cuda()
+        if not pre_loaded:
+            last_checkpoint = os.path.join(results_dir, 'checkpoints/warmup_last.pth')
+            if os.path.exists(last_checkpoint):
+                log(f'Loading model after warmup from {last_checkpoint}')
+                ppnet = torch.load(last_checkpoint)
+                ppnet = ppnet.cuda()
 
         data_module = PatchClassificationDataModule(batch_size=joint_batch_size)
         module = PatchClassificationModule(
@@ -160,7 +161,7 @@ def train(
             training_phase=1,
             max_steps=joint_steps
         )
-        trainer = Trainer(logger=loggers, checkpoint_callback=None, enable_progress_bar=False,
+        trainer = Trainer(logger=loggers, checkpoint_callback=None, enable_progress_bar=True,
                           min_steps=1, max_steps=joint_steps)
         trainer.fit_loop.current_epoch = current_epoch + 1
         trainer.fit(model=module, datamodule=data_module)
@@ -201,7 +202,7 @@ def train(
         ppnet = ppnet.cuda()
         trainer = None
 
-        use_neptune = bool(int(os.environ['USE_NEPTUNE']))
+        use_neptune = False #bool(int(os.environ['USE_NEPTUNE']))
         if use_neptune:
             neptune_logger = NeptuneLogger(
                 project=os.environ['NEPTUNE_PROJECT'],
@@ -228,7 +229,7 @@ def train(
     )
     current_epoch = trainer.current_epoch if trainer is not None else 0
     trainer = Trainer(logger=loggers, callbacks=callbacks, checkpoint_callback=None,
-                      enable_progress_bar=False, max_steps=finetune_steps)
+                      enable_progress_bar=True, max_steps=finetune_steps)
     trainer.fit_loop.current_epoch = current_epoch + 1
     trainer.fit(model=module, datamodule=data_module)
 
@@ -246,7 +247,7 @@ def load_config_and_train(
         experiment_name=experiment_name,
         pruned=pruned,
         neptune_experiment=neptune_experiment,
-        start_checkpoint=start_checkpoint
+        #start_checkpoint=start_checkpoint
     )
 
 

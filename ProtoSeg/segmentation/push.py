@@ -181,6 +181,8 @@ def update_prototypes_on_image(dataset: PatchClassificationDataset,
     # window_shift=512,
     # batch_size=4)
 
+    plot = True
+
     if dataset.convert_targets is not None:
         img_y = dataset.convert_targets(img_y)
     img_y = torch.LongTensor(img_y)
@@ -358,7 +360,7 @@ def update_prototypes_on_image(dataset: PatchClassificationDataset,
             4: width end index
             5: (optional) class identity
             '''
-            if dir_for_saving_prototypes is not None:
+            if dir_for_saving_prototypes is not None and plot:
                 cls_name = cls2name[target_class]
                 dir_for_saving_prototypes_cls = os.path.join(dir_for_saving_prototypes, cls_name)
                 os.makedirs(dir_for_saving_prototypes_cls, exist_ok=True)
@@ -481,3 +483,293 @@ def update_prototypes_on_image(dataset: PatchClassificationDataset,
                                vmax=1.0)
 
     del class_to_patch_index_dict
+
+"""
+def update_prototypes_on_image_vis(dataset: PatchClassificationDataset,
+                               start_index_of_search_batch,
+                               ppnet,
+                               global_min_proto_dist,  # this will be updated
+                               global_min_fmap_patches,  # this will be updated
+                               cls2name,
+                               num_classes=None,  # required if class_specific == True
+                               prototype_layer_stride=1,
+                               dir_for_saving_prototypes=None,
+                               prototype_img_filename_prefix=None,
+                               prototype_self_act_filename_prefix=None,
+                               prototype_activation_function_in_numpy=None,
+                               patch_size=1):
+    # segmentation_result = get_image_segmentation(dataset, ppnet, img,
+    # window_size=dataset.window_size,
+    # window_shift=512,
+    # batch_size=4)
+
+    proto_distances = []
+    for push_iter, img_id in tqdm(enumerate(dataset.img_ids), desc='visualizing prototypes (1/2)', total=len(dataset)):
+        img_path = dataset.get_img_path(img_id)
+
+        with open(img_path, 'rb') as f:
+            img = Image.open(f).convert('RGB')
+
+        # remove margins which were used for training
+        margin_size = dataset.image_margin_size
+        img = img.crop((margin_size, margin_size, img.width - margin_size, img.height - margin_size))
+
+        img_y = np.load(os.path.join(dataset.annotations_dir, img_id + '.npy'))
+    
+        if dataset.convert_targets is not None:
+            img_y = dataset.convert_targets(img_y)
+        img_y = torch.LongTensor(img_y)
+        img_tensor = to_normalized_tensor(img).unsqueeze(0).cuda()
+        conv_features = ppnet.conv_features(img_tensor)
+
+        # save RAM
+        del img_tensor
+
+        logits, distances = ppnet.forward_from_conv_features(conv_features)
+
+        model_output_height = conv_features.shape[2]
+        model_output_width = conv_features.shape[3]
+
+        img_height = img_y.shape[0]
+        img_width = img_y.shape[1]
+
+        patch_height = img_height / model_output_height
+        patch_width = img_width / model_output_width
+
+        # conv_features = torch.nn.functional.interpolate(conv_features, size=(1024, 2048),
+        # mode='bilinear', align_corners=False)
+        # distances = torch.nn.functional.interpolate(distances, size=(1024, 2048),
+        # mode='bilinear', align_corners=False)
+
+        protoL_input_ = conv_features[0].detach().cpu().numpy()
+        proto_dist_ = distances[0].permute(1, 2, 0).detach().cpu().numpy()
+        proto_distances.append(proto_dist_)
+
+        del conv_features, distances
+    
+    proto_distances = np.concatenate(proto_distances)
+
+    prototype_shape = ppnet.prototype_shape
+    n_prototypes = prototype_shape[0]
+    max_dist = prototype_shape[1] * prototype_shape[2] * prototype_shape[3]
+
+    # get the whole image
+    original_img_j = to_tensor(img).detach().cpu().numpy()
+    original_img_j = np.transpose(original_img_j, (1, 2, 0))
+    original_img_height = original_img_j.shape[0]
+    original_img_width = original_img_j.shape[1]
+
+    for j in tqdm(range(n_prototypes), desc='visualizing prototypes (2/2)', total=n_prototypes):
+        #for i in range(len(proto_distances)):
+
+        proto_distances_j = proto_distances[..., j]
+        img_id, patch_i, patch_j = np.where(proto_distances_j == global_min_proto_dist[j])
+
+        img_path = dataset.get_img_path(img_id)
+
+        with open(img_path, 'rb') as f:
+            img = Image.open(f).convert('RGB')
+
+        # remove margins which were used for training
+        margin_size = dataset.image_margin_size
+        img = img.crop((margin_size, margin_size, img.width - margin_size, img.height - margin_size))
+
+        img_y = np.load(os.path.join(dataset.annotations_dir, img_id + '.npy'))
+    
+        if dataset.convert_targets is not None:
+            img_y = dataset.convert_targets(img_y)
+        img_y = torch.LongTensor(img_y)
+        img_tensor = to_normalized_tensor(img).unsqueeze(0).cuda()
+        conv_features = ppnet.conv_features(img_tensor)
+
+        # save RAM
+        del img_tensor
+
+        logits = ppnet.forward_from_conv_features(conv_features)[0]
+
+        del conv_features, distances
+
+        # get segmentation map
+        logits = logits.permute(0, 3, 1, 2)
+        logits_inter = torch.nn.functional.interpolate(logits, size=original_img_j.shape[:2],
+                                                    mode='bilinear', align_corners=False)
+        logits_inter = logits_inter[0]
+        pred = torch.argmax(logits_inter, dim=0).cpu().detach().numpy()
+
+        # target_class is the class of the class_specific prototype
+        target_class = torch.argmax(ppnet.prototype_class_identity[j]).item()
+
+        # get the receptive field boundary of the image patch
+        # that generates the representation
+        # protoL_rf_info = ppnet.proto_layer_rf_info
+        # rf_prototype_j = compute_rf_prototype((search_batch.shape[2], search_batch.shape[3]),
+        # batch_argmin_proto_dist, protoL_rf_info)
+
+        rf_start_h_index = int(patch_i * patch_height)
+        rf_end_h_index = int(patch_i * patch_height + patch_height) + 1
+
+        rf_start_w_index = int(patch_j * patch_width)
+        rf_end_w_index = int(patch_j * patch_width + patch_width) + 1
+
+        rf_prototype_j = [0, rf_start_h_index, rf_end_h_index, rf_start_w_index, rf_end_w_index]
+
+        # crop out the receptive field
+        rf_img_j = original_img_j[rf_prototype_j[1]:rf_prototype_j[2],
+                    rf_prototype_j[3]:rf_prototype_j[4], :]
+        
+        proto_dist_img_j = proto_distances[img_id, :, :, j]
+        if ppnet.prototype_activation_function == 'log':
+            proto_act_img_j = np.log(
+                (proto_dist_img_j + 1) / (proto_dist_img_j + ppnet.epsilon))
+        elif ppnet.prototype_activation_function == 'linear':
+            proto_act_img_j = max_dist - proto_dist_img_j
+        else:
+            proto_act_img_j = prototype_activation_function_in_numpy(proto_dist_img_j)
+        upsampled_act_img_j = cv2.resize(proto_act_img_j, dsize=(original_img_width, original_img_height),
+                                            interpolation=cv2.INTER_CUBIC)
+
+        # high activation area = percentile 95 calculated for activation for all pixels
+        threshold = np.percentile(upsampled_act_img_j, 95)
+
+        # show activation map only on the ground truth class
+        y_mask = img_y.cpu().detach().numpy() == (target_class + 1)
+        upsampled_act_img_j_gt = upsampled_act_img_j * y_mask
+
+        proto_bound_j = find_continuous_high_activation_crop(upsampled_act_img_j_gt, rf_prototype_j[1:],
+                                                                threshold=threshold)
+        # crop out the image patch with high activation as prototype image
+        proto_img_j = original_img_j[proto_bound_j[0]:proto_bound_j[1],
+                        proto_bound_j[2]:proto_bound_j[3], :]
+
+        # find high activation *only* on ground truth
+        threshold_gt = np.percentile(upsampled_act_img_j[y_mask], 95)
+        proto_bound_j_gt = find_continuous_high_activation_crop(upsampled_act_img_j_gt, rf_prototype_j[1:],
+                                                                threshold=threshold)
+        # crop out the image patch with high activation as prototype image
+        proto_img_j_gt = original_img_j[proto_bound_j_gt[0]:proto_bound_j_gt[1],
+                            proto_bound_j_gt[2]:proto_bound_j_gt[3], :]
+
+        if dir_for_saving_prototypes is not None:
+            cls_name = cls2name[target_class]
+            dir_for_saving_prototypes_cls = os.path.join(dir_for_saving_prototypes, cls_name)
+            os.makedirs(dir_for_saving_prototypes_cls, exist_ok=True)
+            DPI = 100
+
+        # save segmentation
+            plt.figure(figsize=(img_width / DPI, img_height / DPI))
+            plt.figure(figsize=(img_width / DPI, img_height / DPI))
+            plt.imshow(original_img_j)
+
+            plt.imshow(pred, alpha=0.7)
+            plt.axis('off')
+            plt.subplots_adjust(top=1, bottom=0, right=1, left=0,
+                                hspace=0, wspace=0)
+            plt.margins(0, 0)
+            plt.savefig(os.path.join(dir_for_saving_prototypes_cls,
+                                    prototype_img_filename_prefix + f'_{j}-original_segmentation.png'))
+            plt.close()
+
+            if prototype_self_act_filename_prefix is not None:
+                # save the numpy array of the prototype self activation
+                np.save(os.path.join(dir_for_saving_prototypes_cls,
+                                    prototype_self_act_filename_prefix + str(j) + '.npy'),
+                        proto_act_img_j)
+            if prototype_img_filename_prefix is not None:
+                # save the whole image containing the prototype as png
+
+                # save the whole image containing the prototype as png
+                plt.imsave(os.path.join(dir_for_saving_prototypes_cls,
+                                        prototype_img_filename_prefix + f'_{j}-original.png'),
+                        original_img_j,
+                        vmin=0.0,
+                        vmax=1.0)
+                plt.imshow(original_img_j)
+                plt.plot([rf_start_w_index, rf_start_w_index], [rf_start_h_index, rf_end_h_index],
+                        [rf_end_w_index, rf_end_w_index], [rf_start_h_index, rf_end_h_index],
+                        [rf_start_w_index, rf_end_w_index], [rf_start_h_index, rf_start_h_index],
+                        [rf_start_w_index, rf_end_w_index], [rf_end_h_index, rf_end_h_index],
+                        linewidth=2, color='red')
+                plt.axis('off')
+                plt.subplots_adjust(top=1, bottom=0, right=1, left=0,
+                                    hspace=0, wspace=0)
+                plt.margins(0, 0)
+                plt.savefig(os.path.join(dir_for_saving_prototypes_cls,
+                                        prototype_img_filename_prefix + f'_{j}-original_with_box.png'))
+                plt.close()
+
+                # overlay (upsampled) self activation on original image and save the result
+                rescaled_act_img_j_gt = upsampled_act_img_j_gt - np.amin(upsampled_act_img_j_gt)
+                rescaled_act_img_j_gt = rescaled_act_img_j_gt / np.amax(rescaled_act_img_j_gt)
+
+                heatmap_gt = cv2.applyColorMap(np.uint8(255 * rescaled_act_img_j_gt), cv2.COLORMAP_JET)
+                heatmap_gt = np.float32(heatmap_gt) / 255
+                heatmap_gt = heatmap_gt[..., ::-1]
+
+                overlayed_original_img_j_gt = 0.5 * original_img_j + 0.3 * heatmap_gt
+                plt.imsave(os.path.join(dir_for_saving_prototypes_cls,
+                                        prototype_img_filename_prefix + f'_{j}-original_with_self_act_gt_only.png'),
+                        overlayed_original_img_j_gt,
+                        vmin=0.0,
+                        vmax=1.0)
+
+                # overlay (upsampled) self activation on original image and save the result
+                rescaled_act_img_j = upsampled_act_img_j - np.amin(upsampled_act_img_j)
+                rescaled_act_img_j = rescaled_act_img_j / np.amax(rescaled_act_img_j)
+
+                heatmap = cv2.applyColorMap(np.uint8(255 * rescaled_act_img_j), cv2.COLORMAP_JET)
+                heatmap = np.float32(heatmap) / 255
+                heatmap = heatmap[..., ::-1]
+
+                overlayed_original_img_j = 0.5 * original_img_j + 0.3 * heatmap
+                plt.imsave(os.path.join(dir_for_saving_prototypes_cls,
+                                        prototype_img_filename_prefix + f'_{j}-original_with_self_act.png'),
+                        overlayed_original_img_j,
+                        vmin=0.0,
+                        vmax=1.0)
+
+                plt.figure(figsize=(img_width / DPI, img_height / DPI))
+                plt.imshow(overlayed_original_img_j)
+                plt.plot([rf_start_w_index, rf_start_w_index], [rf_start_h_index, rf_end_h_index],
+                        [rf_end_w_index, rf_end_w_index], [rf_start_h_index, rf_end_h_index],
+                        [rf_start_w_index, rf_end_w_index], [rf_start_h_index, rf_start_h_index],
+                        [rf_start_w_index, rf_end_w_index], [rf_end_h_index, rf_end_h_index],
+                        linewidth=2, color='red')
+                plt.axis('off')
+                plt.subplots_adjust(top=1, bottom=0, right=1, left=0,
+                                    hspace=0, wspace=0)
+                plt.margins(0, 0)
+                plt.savefig(os.path.join(dir_for_saving_prototypes_cls,
+                                        prototype_img_filename_prefix + f'_{j}-original_with_self_act_and_box.png'))
+                plt.close()
+
+                if img_y.ndim > 2:
+                    plt.imsave(os.path.join(dir_for_saving_prototypes_cls,
+                                            prototype_img_filename_prefix + f'_{j}-receptive_field.png'),
+                            rf_img_j,
+                            vmin=0.0,
+                            vmax=1.0)
+                    overlayed_rf_img_j = overlayed_original_img_j[rf_prototype_j[1]:rf_prototype_j[2],
+                                        rf_prototype_j[3]:rf_prototype_j[4]]
+                    plt.imsave(os.path.join(dir_for_saving_prototypes_cls,
+                                            prototype_img_filename_prefix
+                                            + f'_{j}-receptive_field_with_self_act.png'),
+                            overlayed_rf_img_j,
+                            vmin=0.0,
+                            vmax=1.0)
+
+                # save the prototype image (highly activated region of the whole image)
+                plt.imsave(os.path.join(dir_for_saving_prototypes_cls,
+                                        prototype_img_filename_prefix + f'_{j}.png'),
+                        proto_img_j,
+                        vmin=0.0,
+                        vmax=1.0)
+
+                # save the prototype image (highly activated region of the whole image)
+                plt.imsave(os.path.join(dir_for_saving_prototypes_cls,
+                                        prototype_img_filename_prefix + f'_{j}_gt.png'),
+                        proto_img_j_gt,
+                        vmin=0.0,
+                        vmax=1.0)
+
+    del class_to_patch_index_dict
+"""

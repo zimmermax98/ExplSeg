@@ -11,8 +11,8 @@ from settings import data_path
 
 
 def convert_images_to_numpy(margin_size: int = 0):
-    # for split_key in ['train', 'train_aug', 'val', 'test']:
-    for split_key in ['test']:
+    for split_key in ['train', 'train_aug', 'val', 'test']:
+    #for split_key in ['test']:
         img_dir = os.path.join(data_path, f'img_with_margin_{margin_size}/{split_key}')
 
         if not os.path.exists(img_dir):
@@ -29,4 +29,5 @@ def convert_images_to_numpy(margin_size: int = 0):
 
 
 if __name__ == '__main__':
-    argh.dispatch_command(convert_images_to_numpy)
+    convert_images_to_numpy()
+    #argh.dispatch_command(convert_images_to_numpy)

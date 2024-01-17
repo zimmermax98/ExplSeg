@@ -4,6 +4,8 @@ from collections import Counter
 
 import argh
 import gin
+import matplotlib
+import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -20,7 +22,7 @@ from settings import data_path, log
 
 def run_evaluation(model_name: str, training_phase: str, batch_size: int = 2, pascal: bool = False,
                    margin: int = 0):
-    model_path = os.path.join(os.environ['RESULTS_DIR'], model_name)
+    model_path = os.path.join('./results', model_name)
     config_path = os.path.join(model_path, 'config.gin')
     gin.parse_config_file(config_path)
 
@@ -257,12 +259,15 @@ def run_evaluation(model_name: str, training_phase: str, batch_size: int = 2, pa
         f'{model_name} ({training_phase})\nOccurences (%) of 10 prototypes of each class in its top nearest class for each pixel')
     axes = axes.flatten()
     for class_i, class_name in pred2name.items():
-        n, c = zip(*cls_prototype_counts[class_i].most_common())
-        if sum(cls_prototype_counts[class_i].values()) > 0:
-            c = c / sum(cls_prototype_counts[class_i].values()) * 100
-        axes[class_i].bar(np.arange(len(c)), c)
-        axes[class_i].set_xticks(np.arange(len(c)), n)
-        axes[class_i].set_title(class_name)
+        try:
+            n, c = zip(*cls_prototype_counts[class_i].most_common())
+            if sum(cls_prototype_counts[class_i].values()) > 0:
+                c = c / sum(cls_prototype_counts[class_i].values()) * 100
+            axes[class_i].bar(np.arange(len(c)), c)
+            axes[class_i].set_xticks(np.arange(len(c)), n)
+            axes[class_i].set_title(class_name)
+        except:
+            print(f"No Prototypes for class {class_name}")
 
     plt.tight_layout()
     plt.savefig(os.path.join(RESULTS_DIR, 'occurences_of_each_class_prototypes_in_nearest_pixel.png'))
@@ -271,6 +276,7 @@ def run_evaluation(model_name: str, training_phase: str, batch_size: int = 2, pa
 
     N_SAMPLES = 5
     DPI = 100
+    np.random.seed(1)
 
     for example_i, img_file in tqdm(enumerate(np.random.choice(all_img_files, size=N_SAMPLES, replace=False)),
                                     total=N_SAMPLES, desc='nearest prototype visualization'):
@@ -308,7 +314,23 @@ def run_evaluation(model_name: str, training_phase: str, batch_size: int = 2, pa
             logits = logits.cpu().detach().numpy()
 
         # nearest_proto = np.argmin(distances_interp, axis=0).T % 10
-        nearest_proto = np.argmin(distances, axis=0) % 10
+        nearest_proto = np.argmin(distances, axis=0)
+        unique_protos = np.unique(nearest_proto)
+        nearest_protos_pixels = np.array([(nearest_proto == unique_proto) for unique_proto in unique_protos])
+        nearest_protos_pixels_ratio = nearest_protos_pixels.reshape(nearest_protos_pixels.shape[0], -1).mean(axis=1)
+        top10_protos_pixels_ratio_indices = np.argsort(nearest_protos_pixels_ratio)[::-1][:10]
+        top10_protos = unique_protos[top10_protos_pixels_ratio_indices]
+        top10_protos_pixels = nearest_protos_pixels[top10_protos_pixels_ratio_indices]
+        nearest_protos_top10 = np.zeros_like(nearest_proto)
+        #nearest_protos_top10 = np.copy(img)
+        cmap = matplotlib.colormaps['viridis']
+        cmap2 = matplotlib.colormaps['tab10']
+        
+        colors_pred = cmap(np.linspace(0, 1, 19))
+        colors_protos = cmap2(np.linspace(0, 1, len(top10_protos_pixels_ratio_indices)))
+        for i in range(len(top10_protos_pixels_ratio_indices)):
+            nearest_protos_top10[top10_protos_pixels[i]] = i
+
         pred = np.argmax(logits, axis=0)
 
         # save some RAM
@@ -319,10 +341,14 @@ def run_evaluation(model_name: str, training_phase: str, batch_size: int = 2, pa
         plt.figure(figsize=(img.shape[1] / DPI, img.shape[0] / DPI))
         plt.title(f'{model_name} ({training_phase})\nExample {example_i}. Prediction (from interpolated logits)')
         plt.imshow(img)
-        plt.imshow(pred, alpha=0.5)
+        plt.imshow(colors_pred[pred][..., :3], alpha=0.5)
         plt.imshow(np.zeros_like(pred), alpha=void_mask, vmin=0, vmax=1, cmap='gray')
         plt.axis('off')
         plt.tight_layout()
+        patches = [mpatches.Patch(color=tuple(colors_pred[class_index]), 
+                                  label=f"Class {pred2name[class_index]}") 
+                   for class_index in np.unique(pred)]
+        plt.legend(handles=patches)
         plt.savefig(os.path.join(RESULTS_DIR, f'example_{example_i}_prediction.png'))
 
         # show only one example in notebook
@@ -334,10 +360,28 @@ def run_evaluation(model_name: str, training_phase: str, batch_size: int = 2, pa
         plt.title(
             f'{model_name} ({training_phase})\nExample {example_i}. Nearest prototypes (from interpolated distances)')
         plt.imshow(img)
-        plt.imshow(nearest_proto, alpha=0.5, vmin=0, vmax=9)
+        plt.imshow(colors_protos[nearest_protos_top10][..., :3], alpha=0.5)
         plt.imshow(np.zeros_like(pred), alpha=void_mask, vmin=0, vmax=1, cmap='gray')
         plt.tight_layout()
         plt.axis('off')
+        patches = [mpatches.Patch(color=tuple(colors_protos[j]), 
+                                  label=f"Prototype {proto_index} (Class {pred2name[PROTO2CLS(proto_index).item()]})") 
+                   for j, proto_index in enumerate(top10_protos)]
+        plt.legend(handles=patches)
+        plt.savefig(os.path.join(RESULTS_DIR, f'example_{example_i}_prototypes_img.png'))
+
+        plt.close()
+
+        plt.figure(figsize=(img.shape[1] / DPI, img.shape[0] / DPI))
+        plt.title(
+            f'{model_name} ({training_phase})\nExample {example_i}. Nearest prototypes (from interpolated distances)')
+        plt.imshow(colors_protos[nearest_protos_top10][..., :3])
+        plt.tight_layout()
+        plt.axis('off')
+        patches = [mpatches.Patch(color=tuple(colors_protos[j]), 
+                                  label=f"Prototype {proto_index} (Class {pred2name[PROTO2CLS(proto_index).item()]})") 
+                   for j, proto_index in enumerate(top10_protos)]
+        plt.legend(handles=patches)
         plt.savefig(os.path.join(RESULTS_DIR, f'example_{example_i}_prototypes.png'))
 
         plt.close()

@@ -229,7 +229,11 @@ class PatchClassificationModule(LightningModule):
 
         self.batch_metrics['loss'].append(mcs_loss.item())
         self.batch_metrics['cross_entropy'].append(mcs_cross_entropy.item())
-        self.batch_metrics['kld_loss'].append(mcs_kld_loss.item())
+        if isinstance(mcs_kld_loss, torch.Tensor):
+            mcs_kld_loss_item = mcs_kld_loss.item()
+        else:
+            mcs_kld_loss_item = mcs_kld_loss
+        self.batch_metrics['kld_loss'].append(mcs_kld_loss_item)
         self.iter_steps += 1
 
         if split_key == 'train':

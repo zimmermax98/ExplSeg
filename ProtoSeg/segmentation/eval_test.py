@@ -20,7 +20,7 @@ from settings import data_path, log
 def run_evaluation(model_name: str, training_phase: str, batch_size: int = 2, pascal: bool = False,
                    margin: int = 0):
 
-    model_path = os.path.join(os.environ['RESULTS_DIR'], model_name)
+    model_path = os.path.join("./results", model_name)
     config_path = os.path.join(model_path, 'config.gin')
     gin.parse_config_file(config_path)
 

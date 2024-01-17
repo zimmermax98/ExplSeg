@@ -5,6 +5,8 @@ import gin
 import torch
 import torch.utils.data
 
+import save
+
 import prune
 from preprocess import preprocess
 from segmentation.data_module import PatchClassificationDataModule
@@ -14,11 +16,11 @@ from segmentation.dataset import PatchClassificationDataset
 
 def run_pruning(config_name: str, experiment_name: str, k: int = 6, prune_threshold: int = 3):
     gin.parse_config_file(f'segmentation/configs/{config_name}.gin', skip_unknown=True)
-    gin.parse_config_file(os.path.join(os.environ['RESULTS_DIR'], experiment_name, 'config.gin'),
+    gin.parse_config_file(os.path.join('./results', experiment_name, 'config.gin'),
                           skip_unknown=True)
 
-    model_path = os.path.join(os.environ['RESULTS_DIR'], experiment_name, 'checkpoints/push_last.pth')
-    output_dir = os.path.join(os.environ['RESULTS_DIR'], experiment_name, 'pruned')
+    model_path = os.path.join('./results', experiment_name, 'checkpoints/push_last.pth')
+    output_dir = os.path.join('./results', experiment_name, 'pruned')
 
     os.makedirs(output_dir, exist_ok=True)
 
