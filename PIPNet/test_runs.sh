@@ -1,0 +1,1 @@
+python main.py --task classification --dataset CUB-200-2011 --gpu_ids 0 --run_name TEST_pipnet_cub_cnext26
