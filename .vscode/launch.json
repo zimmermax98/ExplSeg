@@ -1,0 +1,338 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "ProtoSeg Preprocess Cityscapes",
+            "type": "python",
+            "request": "launch",
+            "module": "segmentation.preprocess_cityscapes",
+            "justMyCode": true,
+            "cwd": "~/ExplSeg/ProtoSeg",
+            "args": [
+                "8"
+            ]
+        },
+        {
+            "name": "ProtoSeg Preprocess Pascal VOC",
+            "type": "python",
+            "request": "launch",
+            "module": "segmentation.preprocess_pascal",
+            "justMyCode": true,
+            "cwd": "~/ExplSeg/ProtoSeg",
+            "args": [
+                "8"
+            ]
+        },
+        {
+            "name": "ProtoSeg Img To Numpy",
+            "type": "python",
+            "request": "launch",
+            "module": "segmentation.img_to_numpy",
+            "justMyCode": true,
+            "cwd": "~/ExplSeg/ProtoSeg"
+        },
+        {
+            "name": "ProtoSeg Train",
+            "type": "python",
+            "request": "launch",
+            "module": "segmentation.train",
+            "justMyCode": true,
+            "cwd": "~/ExplSeg/ProtoSeg",
+            "args": [
+                //"cityscapes_kld_imnet",
+                //"cityscapes_run",
+                "pascal_kld_imnet", 
+                "pascal_run",
+            ]
+        },
+        {
+            "name": "ProtoSegPIP Train",
+            "type": "python",
+            "request": "launch",
+            "module": "segmentation.train",
+            "justMyCode": false,
+            "cwd": "~/ExplSeg/ProtoSegPIP",
+            "args": [
+                //"cityscapes_kld_imnet",
+                //"cityscapes_debug",
+                "pascal_kld_imnet", 
+                "pascal_run",
+            ]
+        },
+        {
+            "name": "ProtoSeg Pruning",
+            "type": "python",
+            "request": "launch",
+            "module": "segmentation.run_pruning",
+            "justMyCode": true,
+            "cwd": "~/ExplSeg/ProtoSeg",
+            "args": [
+                "cityscapes_kld_imnet", // "pascal_kld_imnet"
+                "debug_run" //"cityscapes_run"
+            ]
+        },
+        {
+            "name": "ProtoSeg Retrain (after pruning)",
+            "type": "python",
+            "request": "launch",
+            "module": "segmentation.train",
+            "justMyCode": true,
+            "cwd": "~/ExplSeg/ProtoSeg",
+            "args": [
+                "pascal_kld_imnet", // "cityscapes_kld_imnet", "pascal_kld_imnet"
+                "pascal_run", //"cityscapes_run"
+                //"--pruned"
+            ]
+        },
+        {
+            "name": "ProtoSeg Eval Val Set",
+            "type": "python",
+            "request": "launch",
+            "module": "segmentation.eval_valid",
+            "justMyCode": true,
+            "cwd": "~/ExplSeg/ProtoSeg",
+            "args": [
+                //"cityscapes_run",
+                "pascal_run",
+                //"debug_run",
+                "pruned",
+                //"push",
+                "-p" // for Pascal VOC
+            ]
+        },
+        {
+            "name": "ProtoSeg Explanations",
+            "type": "python",
+            "request": "launch",
+            "module": "segmentation.hive_explanations_seg",
+            "justMyCode": true,
+            "cwd": "~/ExplSeg/ProtoSeg",
+            "args": [
+                //"cityscapes_run",
+                //"debug_run",
+                "pascal_run",
+                //"pruned",
+                "push",
+                "-p" // for Pascal VOC
+            ]
+        },
+        {
+            "name": "ProtoSeg Eval Test Set",
+            "type": "python",
+            "request": "launch",
+            "module": "segmentation.eval_test",
+            "justMyCode": true,
+            "cwd": "~/ExplSeg/ProtoSeg",
+            "args": [
+                "cityscapes_run",
+                "pruned"
+                // "-p" // for Pascal VOC
+            ]
+        },
+        {
+            "name": "PIPNet Main Seg",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/PIPNet/main.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}/PIPNet/",
+            "args": [
+                "--task", "segmentation",
+                "--net", "resnet50", "--lr_net", "0.0001", "--batch_size_pretrain", "64",
+                "--seed", "1",
+                "--gpu_ids", "1",
+                "--dataset", "VOC",
+                "--epochs", "30",
+                "--epochs_pretrain", "10",
+                "--freeze_epochs", "10",
+                "--run_name",
+                "voc_resnet50_pool3_stride1_seed1",
+                //"debug"
+                //"--state_dict_dir_net",
+                //"runs/pipnet-seg_voc_cnext_pooling_test/checkpoints/net_trained_last"
+            ]
+        },
+        {
+            "name": "PIPNet Main Cls",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/PIPNet/main.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}/PIPNet/",
+            "args": [
+                "--task", "classification",
+                //"--net", //"resnet50",
+                "--gpu_ids", "0",
+                //"--dataset", "CARS",
+                "--dataset", "VOC",
+                "--epochs", "0",
+                "--freeze_epochs", "0",
+                "--epochs_pretrain", "0",
+                "--run_name", "pipnet-cls_voc_cnext",
+                "--state_dict_dir_net", 
+                //"runs/pipnet-cls_voc_cnext/checkpoints/net_pretrained_10"
+                "runs/pipnet-cls_voc_cnext/checkpoints/net_trained_last"
+                //"runs/pipnet-seg_voc_f2048/checkpoints/net_trained_last"
+                //"runs/pipnet-seg_voc_f2048_epochs100/checkpoints/net_pretrained_10"
+            ]
+        },
+        {
+            "name": "PIPNet Hive Agreement Task Cls",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/PIPNet/agreement_task_cls.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}/PIPNet/",
+            "args": [
+                "--config", "2",
+                "--random_prototypes",
+                "--task", "classification",
+                //"--net", "resnet50",
+                "--gpu_ids", "2",
+                "--state_dict_dir_net", 
+                "runs/pipnet_cub_cnext26/checkpoints/net_trained_last"
+            ]
+        },
+        {
+            "name": "PIPNet Hive Agreement Task Seg",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/PIPNet/agreement_task_seg.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}/PIPNet/",
+            "args": [
+                "--config", "0",
+                "--random_prototypes",
+                "--task", "segmentation",
+                //"--net", "resnet50",
+                "--gpu_ids", "3",
+                "--dataset", "VOC",
+                "--state_dict_dir_net", 
+                "runs/voc_cnext_pool3_stride1_seed1/checkpoints/net_trained_last"
+            ]
+        },
+        {
+            "name": "PIPNet Eval Cls",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/PIPNet/eval.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}/PIPNet/",
+            "args": [
+                "--task", "classification",
+                //"--net", "resnet50",
+                "--gpu_ids", "2",
+                //"--dataset", "VOC",
+                "--state_dict_dir_net",
+                "runs/pipnet_cub_cnext26/checkpoints/net_trained_last"
+            ]
+        },
+        {
+            "name": "PIPNet Eval Seg",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/PIPNet/eval.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}/PIPNet/",
+            "args": [
+                "--task", "segmentation",
+                //"--net", "resnet50",
+                "--gpu_ids", "2",
+                "--dataset", "VOC",
+                "--run_name", "voc_cnext_pool3_stride1_seed1"
+            ]
+        },
+        {
+            "name": "L-CRP: Plot CRP Explanation",
+            "type": "python",
+            "python": "~/anaconda3/envs/L-CRP/bin/python", 
+            "request": "launch",
+            "module": "experiments.plot_crp_explanation",
+            "justMyCode": false,
+            "cwd": "~/ExplSeg/L-CRP"
+        },
+        {
+            "name": "Segmentation Main",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/Segmentation/main.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}/Segmentation/",
+            "args": [
+                "--gpu_id", "0",
+                "--model", "fcn_resnet50",
+                "--dataset", "voc",  // choose from "voc", "cityscapes"
+                "--year", "2012",   // choose from "2012", "2012_aug"
+                //"--test_only",
+                "--crop_val",
+                "--crop_size", "224",
+                //"--ckpt", "checkpoints/fcn_resnet50_voc_os16_expansion4/best_fcn_resnet50_voc_os16.pth",
+            ]
+        },
+        {
+            "name": "Segmentation Vis",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/Segmentation/vis.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}/Segmentation/",
+            "args": [
+                "--vis_type", "all",
+                "--with_legend",
+                "--input_type", "data_loader",
+                //"--input", "/fastdata/MT_ExplSeg/datasets/cityscapes/leftImg8bit/val/munster"
+                "--dataset", "voc",  // choose from "voc", "cityscapes"
+                "--year", "2012",   // choose from "2012", "2012_aug"
+                "--gpu_id", "0",
+                "--model", "fcn_resnet50",
+                "--crop_val",
+                "--crop_size", "224",
+                "--ckpt", "checkpoints/fcn_resnet50_voc_os16_expansion4/best_fcn_resnet50_voc_os16.pth",
+            ]
+        },
+        {
+            "name": "Segmentation Attribute",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/Segmentation/attribute.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}/Segmentation/",
+            "args": [
+
+                "--attr_method", "segintgrad",
+                "--maskMode", "classMask",
+                "--target", "-2",
+                "--input_type", "data_loader",
+                //"--input", "/fastdata/MT_ExplSeg/datasets/cityscapes/leftImg8bit/val/munster"
+                "--dataset", "voc",  // choose from "voc", "cityscapes"
+                "--year", "2012",   // choose from "2012", "2012_aug"
+                "--gpu_id", "0",
+                "--model", "fcn_resnet50",
+                "--crop_val",
+                "--crop_size", "224",
+                "--ckpt", "checkpoints/best_fcn_resnet50_voc_os16.pth",
+            ]
+        },
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${fileDirname}",
+        },
+    ]
+}
