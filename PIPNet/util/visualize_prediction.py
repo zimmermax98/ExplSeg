@@ -121,7 +121,9 @@ def vis_pred_cls(net, test_projectloader, device, args: argparse.Namespace, n_pr
                     img_patch_pil = Image.fromarray(img_patch)
                     img_patch_pil.save(os.path.join(save_path, f'{file_name_stats}_patch.png'))
                     img_rect_pil = img_pil.copy()
-                    D.Draw(img_rect_pil).rectangle([(w_idx*skip,h_idx*skip), (min(args.image_size, w_idx*skip+patchsize), min(args.image_size, h_idx*skip+patchsize))], outline='yellow', width=2)
+                    D.Draw(img_rect_pil).rectangle([(w_idx*skip,h_idx*skip), 
+                                                    (min(args.image_size, w_idx*skip+patchsize), 
+                                                     min(args.image_size, h_idx*skip+patchsize))], outline='yellow', width=2)
                     img_rect_pil.save(os.path.join(save_path, f'{file_name_stats}_rect.png'))
 
                     # visualise softmaxes as heatmap
@@ -187,12 +189,8 @@ def vis_pred_seg(net, test_projectloader, device, args: argparse.Namespace, n_pr
             plt.close()
 
             # Visualize prediction
-            img_rgba = np.dstack((img, np.full_like(img[..., 0], 255)))
-            colorized_preds = np.dstack([class2color(ys_pred), np.full((224, 224, 1), 255, dtype=np.uint8)])
-            colorized_preds = colorized_preds * np.dstack(4 * [ys_pred != 0])
-            colorized_preds = (0.5 * colorized_preds + 0.5 * img_rgba).astype(np.uint8)
-            #colorized_preds = class2color(ys_pred)
-            #colorized_preds = (0.5 * colorized_preds + 0.5 * img).astype(np.uint8)
+            colorized_preds = class2color(ys_pred)
+            colorized_preds = (0.5 * colorized_preds + 0.5 * img).astype(np.uint8)
             plt.figure(figsize=(args.image_size / 25, args.image_size / 25))
             plt.imshow(colorized_preds)
             plt.tight_layout()
@@ -211,7 +209,6 @@ def vis_pred_seg(net, test_projectloader, device, args: argparse.Namespace, n_pr
                 )[0].cpu().numpy()
             protos_upscale = pfs_upscale.argmax(axis=0)
 
-            #unique_protos, protos_counts = np.unique(pfs_locpooled, return_counts=True)
             unique_protos, protos_counts = np.unique(protos_upscale, return_counts=True)
             topk_protos = unique_protos[np.argsort(-protos_counts)[:10]]
 
@@ -243,15 +240,15 @@ def vis_pred_seg(net, test_projectloader, device, args: argparse.Namespace, n_pr
                 if not os.path.exists(save_path):
                     os.makedirs(save_path)
                 
-                class_mask_no_upsc = (ys_pred_no_upsc == pred_class)
+                class_mask_no_upsc = (torch.einsum("phw,np->nhw", pfs, classification_weights.squeeze()).argmax(dim=0) == pred_class).cpu().numpy()
                 
                 topk = 5
-                sim_scores = ((pfs_locpooled * classification_weights[pred_class]).cpu().numpy() * class_mask_no_upsc)
+                sim_scores = ((pfs * classification_weights[pred_class]).cpu().numpy() * class_mask_no_upsc)
                 # Find the most similar (unique) prototypes and their patches
                 sim_scores_flat = sim_scores.reshape((net.module._num_prototypes, -1))  # flatten only spatial dim -> shape = (num_protos, w*h)
                 # Most similar patch index for each every prototype (where the prototype is activated the most)
                 pfs_best_idxs_flat = sim_scores_flat.argmax(axis=1)
-                pfs_best_h_idxs, pfs_best_w_idxs = np.unravel_index(pfs_best_idxs_flat, (args.wshape_locpooled, args.wshape_locpooled))
+                pfs_best_h_idxs, pfs_best_w_idxs = np.unravel_index(pfs_best_idxs_flat, (args.wshape, args.wshape))
                 # Similarity scores for each prototype where it is activated the most
                 best_sim_scores_pfs = sim_scores[np.arange(net.module._num_prototypes), pfs_best_h_idxs, pfs_best_w_idxs]
                 pfs_relv_pt_idxs = np.argsort(-best_sim_scores_pfs)[:topk]
@@ -267,12 +264,14 @@ def vis_pred_seg(net, test_projectloader, device, args: argparse.Namespace, n_pr
                     w_idx = pfs_relv_w_idxs[k]
                     
                     file_name_stats = f'{k}_mul{sim_score:.3f}_p{prototype_idx}-{h_idx}-{w_idx}_sim{sim_score.item():.3f}_w{net.module._classification.weight[pred_class, prototype_idx].item():.3f}'
-                    h_coor_min, h_coor_max, w_coor_min, w_coor_max = get_img_coordinates(args.image_size, args.wshape_locpooled, patchsize, skip, h_idx, w_idx)
+                    h_coor_min, h_coor_max, w_coor_min, w_coor_max = get_img_coordinates(args.image_size, args.wshape, patchsize, skip, h_idx, w_idx)
                     img_patch = img[h_coor_min:h_coor_max, w_coor_min:w_coor_max]
                     img_patch_pil = Image.fromarray(img_patch)
                     img_patch_pil.save(os.path.join(save_path, f'{file_name_stats}_patch.png'))
                     img_rect_pil = img_pil.copy()
-                    D.Draw(img_rect_pil).rectangle([(w_idx*skip,h_idx*skip), (min(args.image_size, w_idx*skip+patchsize), min(args.image_size, h_idx*skip+patchsize))], outline='yellow', width=2)
+                    D.Draw(img_rect_pil).rectangle([(w_idx*skip,h_idx*skip), 
+                                                    (min(args.image_size, w_idx*skip+patchsize), 
+                                                     min(args.image_size, h_idx*skip+patchsize))], outline='yellow', width=2)
                     img_rect_pil.save(os.path.join(save_path, f'{file_name_stats}_rect.png'))
 
                     # visualise softmaxes as heatmap
