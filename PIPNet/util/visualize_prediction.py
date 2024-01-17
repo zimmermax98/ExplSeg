@@ -104,7 +104,7 @@ def vis_pred_cls(net, test_projectloader, device, args: argparse.Namespace, n_pr
                 sim_scores_topk, pfs_idxs_topk = sim_scores.topk(k=topk)
 
                 pooled_idxs_topk = pooled_idxs[pfs_idxs_topk].cpu().numpy()
-                h_idxs_topk, w_idxs_topk = np.unravel_index(pooled_idxs_topk, pfs.shape[-2:])
+                h_idxs_topk, w_idxs_topk = np.unravel_index(pooled_idxs_topk, (args.wshape, args.wshape))
                 pfs_idxs_topk = pfs_idxs_topk.cpu().numpy()
 
                 for k in range(topk):
@@ -129,7 +129,7 @@ def vis_pred_cls(net, test_projectloader, device, args: argparse.Namespace, n_pr
                     heatmap_img =  (0.3 * heatmap + 0.7 * img).astype(np.uint8)
                     plt.imsave(fname=os.path.join(save_path, f'{k}_heatmap_p{prototype_idx}.png'), arr=heatmap_img)
 
-        if i == (n_preds-1):
+        if i == n_preds:
             break
 
 
@@ -248,12 +248,12 @@ def vis_pred_seg(net, test_projectloader, device, args: argparse.Namespace, n_pr
                 topk = 5
                 sim_scores = ((pfs_locpooled * classification_weights[pred_class]).cpu().numpy() * class_mask_no_upsc)
                 # Find the most similar (unique) prototypes and their patches
-                sim_scores_flat = sim_scores.reshape((pfs_locpooled.shape[0], -1))  # flatten only spatial dim -> shape = (num_protos, w*h)
+                sim_scores_flat = sim_scores.reshape((net.module._num_prototypes, -1))  # flatten only spatial dim -> shape = (num_protos, w*h)
                 # Most similar patch index for each every prototype (where the prototype is activated the most)
                 pfs_best_idxs_flat = sim_scores_flat.argmax(axis=1)
-                pfs_best_h_idxs, pfs_best_w_idxs = np.unravel_index(pfs_best_idxs_flat, pfs_locpooled.shape[-2:])
+                pfs_best_h_idxs, pfs_best_w_idxs = np.unravel_index(pfs_best_idxs_flat, (args.wshape_locpooled, args.wshape_locpooled))
                 # Similarity scores for each prototype where it is activated the most
-                best_sim_scores_pfs = sim_scores[np.arange(pfs_locpooled.shape[0]), pfs_best_h_idxs, pfs_best_w_idxs]
+                best_sim_scores_pfs = sim_scores[np.arange(net.module._num_prototypes), pfs_best_h_idxs, pfs_best_w_idxs]
                 pfs_relv_pt_idxs = np.argsort(-best_sim_scores_pfs)[:topk]
                 pfs_relv_h_idxs, pfs_relv_w_idxs = pfs_best_h_idxs[pfs_relv_pt_idxs], pfs_best_w_idxs[pfs_relv_pt_idxs]
                 sim_scores_relv = best_sim_scores_pfs[pfs_relv_pt_idxs]
@@ -267,7 +267,7 @@ def vis_pred_seg(net, test_projectloader, device, args: argparse.Namespace, n_pr
                     w_idx = pfs_relv_w_idxs[k]
                     
                     file_name_stats = f'{k}_mul{sim_score:.3f}_p{prototype_idx}-{h_idx}-{w_idx}_sim{sim_score.item():.3f}_w{net.module._classification.weight[pred_class, prototype_idx].item():.3f}'
-                    h_coor_min, h_coor_max, w_coor_min, w_coor_max = get_img_coordinates(args.image_size, args.wshape, patchsize, skip, h_idx, w_idx)
+                    h_coor_min, h_coor_max, w_coor_min, w_coor_max = get_img_coordinates(args.image_size, args.wshape_locpooled, patchsize, skip, h_idx, w_idx)
                     img_patch = img[h_coor_min:h_coor_max, w_coor_min:w_coor_max]
                     img_patch_pil = Image.fromarray(img_patch)
                     img_patch_pil.save(os.path.join(save_path, f'{file_name_stats}_patch.png'))
@@ -280,7 +280,7 @@ def vis_pred_seg(net, test_projectloader, device, args: argparse.Namespace, n_pr
                     heatmap_img = (0.3 * heatmap + 0.7 * img).astype(np.uint8)
                     plt.imsave(fname=os.path.join(save_path, f'{k}_heatmap_p{prototype_idx}.png'), arr=heatmap_img)
         
-        if i == (n_preds-1):
+        if i == n_preds:
             break
 
 def vis_pred(net, test_projectloader, device, args: argparse.Namespace, n_preds=100):

@@ -5,8 +5,7 @@ import os
 import copy
 
 import sys
-#project_dir = os.path.expanduser("~")
-project_dir = "/Users/zimmermax/SynologyDrive/Master-Studium/Dateien und Skripte/6. Semester/Master-Thesis"
+project_dir = os.path.expanduser("~")
 segmentation_path = os.path.join(project_dir, "ExplSeg", "Segmentation")
 sys.path.insert(0, segmentation_path)
 import network

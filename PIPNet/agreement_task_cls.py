@@ -30,7 +30,6 @@ def main(args):
     n_protos = configs[args.config]["n_protos"]
     mode = configs[args.config]["mode"]
 
-    args.run_name = args.state_dict_dir_net.split("/")[-3]
     args.log_dir = os.path.join(args.log_base_dir, args.run_name)
 
     torch.manual_seed(args.seed)
@@ -53,18 +52,19 @@ def main(args):
 
     # Load model
     with torch.no_grad():
-        checkpoint = torch.load(args.state_dict_dir_net,map_location=device)
-        net.load_state_dict(checkpoint['model_state_dict'],strict=True) 
+        state_dict = os.path.join(args.log_dir, "checkpoints", "net_trained")
+        checkpoint = torch.load(state_dict, map_location=device)
+        net.load_state_dict(checkpoint['model_state_dict'], strict=True) 
         print("Pretrained network loaded")
         net.module._classification.normalization_multiplier.requires_grad = False
 
     with torch.no_grad():
         xs1, _, _ = next(iter(trainloader))
         xs1 = xs1.to(device)
-        _, pfs_locpooled, _, _, _ = net(xs1)
-        wshape = pfs_locpooled.shape[-1]
-        args.wshape = wshape #needed for calculating image patch size
-        print("Output shape: ", pfs_locpooled.shape)
+        pfs, pfs_locpooled, _, _, _ = net(xs1)
+        args.wshape = pfs.shape[-1] # needed for calculating image patch size
+        args.wshape_locpooled = pfs_locpooled.shape[-1]
+        print(f"Output shape: {args.wshape}. Considering local pooling layer: {args.wshape_locpooled}")
 
         del xs1, pfs_locpooled
 

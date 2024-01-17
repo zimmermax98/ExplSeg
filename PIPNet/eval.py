@@ -16,7 +16,6 @@ sys.path.insert(0, segmentation_path)
 from metrics import StreamSegMetrics
 
 def main(args=None):
-    args.run_name = os.path.basename(os.path.dirname(os.path.dirname(args.state_dict_dir_net)))
     args.log_dir = os.path.join(args.log_base_dir, args.run_name)
     if not os.path.exists(args.log_dir):
         os.makedirs(args.log_dir)
@@ -52,9 +51,10 @@ def main(args=None):
     with torch.no_grad():
         xs1, _, _ = next(iter(trainloader))
         xs1 = xs1.to(device)
-        _, pfs_locpooled, _, _, _ = net(xs1)
-        args.wshape = pfs_locpooled.shape[-1] # needed for calculating image patch size
-        print(f"Output shape: {args.wshape}")
+        pfs, pfs_locpooled, _, _, _ = net(xs1)
+        args.wshape = pfs.shape[-1] # needed for calculating image patch size
+        args.wshape_locpooled = pfs_locpooled.shape[-1]
+        print(f"Output shape: {args.wshape}. Considering local pooling layer: {args.wshape_locpooled}")
 
         del xs1, pfs_locpooled
 
@@ -67,7 +67,7 @@ def main(args=None):
         net.load_state_dict(checkpoint['model_state_dict'],strict=False) 
         print("Pretrained network loaded")
 
-    eval_pipnet(args, net, testloader, epoch, device, metrics)
+    eval_pipnet(args, net, testloader, 0, device, metrics)
     visualize_topk(net, projectloader, device, 'topk_prototypes', args, save_vis=True, use_precomp_topk=True)
     vis_pred(net, test_projectloader, device, args, n_preds=100)
 

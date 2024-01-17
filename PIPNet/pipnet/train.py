@@ -17,8 +17,6 @@ def train_pipnet(args, net, train_loader, optimizer_net, optimizer_classifier, s
     
     enable_separation_loss = False
     if enable_separation_loss:
-        w_shape_backup = args.wshape
-        args.wshape *= 2  # TODO: Use the 2x here because of the 2x2 pooling
         patchsize, skip = get_patch_size(args)
         patch_coordinates = []
         for h_idx in range(args.wshape):
@@ -26,8 +24,6 @@ def train_pipnet(args, net, train_loader, optimizer_net, optimizer_classifier, s
                 h_coor_min, h_coor_max, w_coor_min, w_coor_max = get_img_coordinates(args.image_size, args.wshape, patchsize, skip, h_idx, w_idx)
                 patch_coordinates.append([h_coor_min, h_coor_max, w_coor_min, w_coor_max])
         patch_coordinates = np.array(patch_coordinates)
-
-        args.wshape = w_shape_backup
     else:
         patch_coordinates = None
 
@@ -234,8 +230,6 @@ def train_pipnet(args, net, train_loader, optimizer_net, optimizer_classifier, s
 
         if not pretrain:
             print(f"Train Accuracy: {train_info['train_accuracy']:.3f}")
-
-
 
     train_info.update()
     return train_info

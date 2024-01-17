@@ -13,8 +13,7 @@ from sklearn.model_selection import train_test_split
 from PIL import Image
 
 import sys, os
-segmentation_path = os.path.join("/Users/zimmermax/SynologyDrive/Master-Studium/Dateien und Skripte/6. Semester/Master-Thesis/ExplSeg/Segmentation")
-#segmentation_path = os.path.join(os.path.expanduser("~"), "ExplSeg", "Segmentation")
+segmentation_path = os.path.join(os.path.expanduser("~"), "ExplSeg", "Segmentation")
 sys.path.insert(0, segmentation_path)
 from utils import ext_transforms as et
 from datasets.voc import VOCSegmentation

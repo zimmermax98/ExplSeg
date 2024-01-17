@@ -138,7 +138,7 @@
                 "--run_name",
                 "voc_resnet50_pool3_stride1_seed1",
                 //"debug"
-                //"--state_dict_dir_net",
+                //"--checkpoint_name",
                 //"runs/pipnet-seg_voc_cnext_pooling_test/checkpoints/net_trained_last"
             ]
         },
@@ -155,16 +155,12 @@
                 //"--net", //"resnet50",
                 "--gpu_ids", "0",
                 //"--dataset", "CARS",
-                "--dataset", "VOC",
+                //"--dataset", "VOC",
                 "--epochs", "0",
                 "--freeze_epochs", "0",
                 "--epochs_pretrain", "0",
                 "--run_name", "pipnet-cls_voc_cnext",
-                "--state_dict_dir_net", 
-                //"runs/pipnet-cls_voc_cnext/checkpoints/net_pretrained_10"
-                "runs/pipnet-cls_voc_cnext/checkpoints/net_trained_last"
-                //"runs/pipnet-seg_voc_f2048/checkpoints/net_trained_last"
-                //"runs/pipnet-seg_voc_f2048_epochs100/checkpoints/net_pretrained_10"
+                //"--checkpoint_name", "net_pretrained"
             ]
         },
         {
@@ -181,8 +177,7 @@
                 "--task", "classification",
                 //"--net", "resnet50",
                 "--gpu_ids", "2",
-                "--state_dict_dir_net", 
-                "runs/pipnet_cub_cnext26/checkpoints/net_trained_last"
+                "--run_name", "pipnet_cub_cnext26"
             ]
         },
         {
@@ -200,8 +195,7 @@
                 //"--net", "resnet50",
                 "--gpu_ids", "3",
                 "--dataset", "VOC",
-                "--state_dict_dir_net", 
-                "runs/voc_cnext_pool3_stride1_seed1/checkpoints/net_trained_last"
+                "--run_name", "voc_cnext_pool3_stride1_seed1"
             ]
         },
         {
@@ -217,8 +211,7 @@
                 //"--net", "resnet50",
                 "--gpu_ids", "2",
                 //"--dataset", "VOC",
-                "--state_dict_dir_net",
-                "runs/pipnet_cub_cnext26/checkpoints/net_trained_last"
+                "--run_name", "TEST_pipnet_cub_cnext26"
             ]
         },
         {
@@ -234,7 +227,7 @@
                 //"--net", "resnet50",
                 "--gpu_ids", "2",
                 "--dataset", "VOC",
-                "--run_name", "voc_cnext_pool3_stride1_seed1"
+                "--run_name", "TEST_pipnet_voc_cnext26"
             ]
         },
         {

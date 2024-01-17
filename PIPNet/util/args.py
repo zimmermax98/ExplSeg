@@ -94,7 +94,7 @@ def get_args(args_config="main") -> argparse.Namespace:
                         type=int,
                         default=224,
                         help='Input images will be resized to --image_size x --image_size (square). Code only tested with 224x224, so no guarantees that it works for different sizes.')
-    parser.add_argument('--state_dict_dir_net',
+    parser.add_argument('--checkpoint_name',
                         type=str,
                         default='',
                         help='The directory containing a state dict with a pretrained PIP-Net. E.g., ./runs/run_pipnet/checkpoints/net_pretrained')

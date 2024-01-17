@@ -59,10 +59,10 @@ def main(args=None):
 
     # Initialize or load model
     with torch.no_grad():
-        if args.state_dict_dir_net != '':
-            epoch = 0
-            checkpoint = torch.load(args.state_dict_dir_net,map_location=device)
-            net.load_state_dict(checkpoint['model_state_dict'],strict=True) 
+        if args.checkpoint_name != '':
+            state_dict = os.path.join(args.log_dir, "checkpoints", args.checkpoint_name)
+            checkpoint = torch.load(state_dict, map_location=device)
+            net.load_state_dict(checkpoint['model_state_dict'], strict=True) 
             print("Pretrained network loaded")
             net.module._classification.normalization_multiplier.requires_grad = False
             try:
@@ -99,9 +99,10 @@ def main(args=None):
     with torch.no_grad():
         xs1, _, _ = next(iter(trainloader))
         xs1 = xs1.to(device)
-        _, pfs_locpooled, _, _, _ = net(xs1)
-        args.wshape = pfs_locpooled.shape[-1] # needed for calculating image patch size
-        print(f"Output shape: {args.wshape}")
+        pfs, pfs_locpooled, _, _, _ = net(xs1)
+        args.wshape = pfs.shape[-1] # needed for calculating image patch size
+        args.wshape_locpooled = pfs_locpooled.shape[-1]
+        print(f"Output shape: {args.wshape}. Considering local pooling layer: {args.wshape_locpooled}")
 
         del xs1, pfs_locpooled
     
@@ -148,12 +149,12 @@ def main(args=None):
             max_protos_pretrain = train_info["max_protos_pretrain"]
         else:
             max_protos_pretrain = None
-    if args.state_dict_dir_net == '':
-        net.eval()
-        torch.save({'model_state_dict': net.state_dict(), 
-                    'optimizer_net_state_dict': optimizer_net.state_dict()}, 
-                    os.path.join(os.path.join(args.log_dir, 'checkpoints'), f'net_pretrained'))
-        net.train()
+    
+    net.eval()
+    torch.save({'model_state_dict': net.state_dict(), 
+                'optimizer_net_state_dict': optimizer_net.state_dict()}, 
+                os.path.join(os.path.join(args.log_dir, 'checkpoints'), f'net_pretrained'))
+    net.train()
     
     topk_dict = visualize_topk(net, projectloader, device, 'topk_prototypes_pretrain', args)
 
@@ -178,7 +179,7 @@ def main(args=None):
     for epoch in range(1, args.epochs + 1):                      
         epochs_to_finetune = 3 # during finetuning, only train classification layer and freeze rest. usually done for a few epochs (at least 1, more depends on size of dataset)
         if epoch <= epochs_to_finetune:
-        #if epoch <= epochs_to_finetune and (args.epochs_pretrain > 0 or args.state_dict_dir_net != ''):
+        #if epoch <= epochs_to_finetune and (args.epochs_pretrain > 0 or args.checkpoint_name != ''):
             for param in net.module.add_on_layers.parameters():
                 param.requires_grad = False
             for param in params_to_train:
