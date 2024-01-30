@@ -9,7 +9,13 @@ from util.vis_pipnet import get_img_coordinates
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+from matplotlib.colors import LinearSegmentedColormap
 import numpy as np
+
+def create_custom_colormap(color, n=256):
+    color = tuple([c / 255 for c in color])
+    transparent_to_color = [(0, 0, 0, 0)] + [color + (i / (n-1),) for i in range(n)]
+    return LinearSegmentedColormap.from_list('  ', transparent_to_color, n)
 
 @torch.no_grad()
 def vis_pred_cls(net, test_projectloader, device, args: argparse.Namespace, n_preds=100):
@@ -210,7 +216,7 @@ def vis_pred_seg(net, test_projectloader, device, args: argparse.Namespace, n_pr
             protos_upscale = pfs_upscale.argmax(axis=0)
 
             unique_protos, protos_counts = np.unique(protos_upscale, return_counts=True)
-            topk_protos = unique_protos[np.argsort(-protos_counts)[:10]]
+            topk_protos = unique_protos[np.argsort(-protos_counts)[:5]]
 
             topk_protos_idxs = np.full_like(protos_upscale, fill_value=255)  # initialize with invalid value
             for k, p in enumerate(topk_protos):
@@ -225,6 +231,7 @@ def vis_pred_seg(net, test_projectloader, device, args: argparse.Namespace, n_pr
             plt.axis('off')
             patches = [mpatches.Patch(color=tuple(prototype2color[k] / 255), label=f"P{p}") 
                        for k, p in enumerate(topk_protos)]
+            patches.append(mpatches.Patch(color=tuple(prototype2color[255] / 255), label=f"Other"))
             plt.legend(handles=patches)
             plt.savefig(os.path.join(dir, 'prototypes.png'), bbox_inches='tight')
             plt.close()
@@ -240,44 +247,70 @@ def vis_pred_seg(net, test_projectloader, device, args: argparse.Namespace, n_pr
                 if not os.path.exists(save_path):
                     os.makedirs(save_path)
                 
-                class_mask_no_upsc = (torch.einsum("phw,np->nhw", pfs, classification_weights.squeeze()).argmax(dim=0) == pred_class).cpu().numpy()
-                
                 topk = 5
-                sim_scores = ((pfs * classification_weights[pred_class]).cpu().numpy() * class_mask_no_upsc)
-                # Find the most similar (unique) prototypes and their patches
-                sim_scores_flat = sim_scores.reshape((net.module._num_prototypes, -1))  # flatten only spatial dim -> shape = (num_protos, w*h)
-                # Most similar patch index for each every prototype (where the prototype is activated the most)
-                pfs_best_idxs_flat = sim_scores_flat.argmax(axis=1)
-                pfs_best_h_idxs, pfs_best_w_idxs = np.unravel_index(pfs_best_idxs_flat, (args.wshape, args.wshape))
-                # Similarity scores for each prototype where it is activated the most
-                best_sim_scores_pfs = sim_scores[np.arange(net.module._num_prototypes), pfs_best_h_idxs, pfs_best_w_idxs]
-                pfs_relv_pt_idxs = np.argsort(-best_sim_scores_pfs)[:topk]
-                pfs_relv_h_idxs, pfs_relv_w_idxs = pfs_best_h_idxs[pfs_relv_pt_idxs], pfs_best_w_idxs[pfs_relv_pt_idxs]
-                sim_scores_relv = best_sim_scores_pfs[pfs_relv_pt_idxs]
+                class_weight_threshold = 1e-8
 
-                for k in range(topk):
-                    sim_score = sim_scores_relv[k]
+                # find all class relevant prototypes that were present in the image
+                topk_class_sim_scores, topk_class_pt_idxs = classification_weights.squeeze()[pred_class][unique_protos].topk(topk)
+                topk_class_pt_idxs = unique_protos[topk_class_pt_idxs.cpu().numpy()]
+                topk_class_sim_scores = topk_class_sim_scores.cpu().numpy()
+                
+                topk_class_pt_idxs = topk_class_pt_idxs[topk_class_sim_scores >= class_weight_threshold]
+                topk_class_sim_scores = topk_class_sim_scores[topk_class_sim_scores >= class_weight_threshold]
+
+                pfs_topk_class_idxs_flat = pfs[topk_class_pt_idxs].flatten(start_dim=1)
+                topk_class_hw_idxs_flat = pfs_topk_class_idxs_flat.argmax(dim=1)
+                topk_class_h_idxs, topk_class_w_idxs = np.unravel_index(topk_class_hw_idxs_flat.cpu().numpy(), (args.wshape, args.wshape))
+
+                target_colors = [
+                    (255, 39, 39),
+                    (96, 217, 54),
+                    (0, 162, 255),
+                    (254, 174, 1),
+                    (102, 0, 204)
+                ]
+
+                heatmap_class = img.copy()
+                
+                rects = []
+                for k in range(len(topk_class_sim_scores)):
+                    sim_score = topk_class_sim_scores[k]
                     if sim_score == 0:
                         continue
-                    prototype_idx = pfs_relv_pt_idxs[k]
-                    h_idx = pfs_relv_h_idxs[k]
-                    w_idx = pfs_relv_w_idxs[k]
+                    prototype_idx = topk_class_pt_idxs[k]
+                    h_idx = topk_class_h_idxs[k]
+                    w_idx = topk_class_w_idxs[k]
                     
                     file_name_stats = f'{k}_mul{sim_score:.3f}_p{prototype_idx}-{h_idx}-{w_idx}_sim{sim_score.item():.3f}_w{net.module._classification.weight[pred_class, prototype_idx].item():.3f}'
                     h_coor_min, h_coor_max, w_coor_min, w_coor_max = get_img_coordinates(args.image_size, args.wshape, patchsize, skip, h_idx, w_idx)
+                    rects.append((h_idx, w_idx))
                     img_patch = img[h_coor_min:h_coor_max, w_coor_min:w_coor_max]
                     img_patch_pil = Image.fromarray(img_patch)
                     img_patch_pil.save(os.path.join(save_path, f'{file_name_stats}_patch.png'))
                     img_rect_pil = img_pil.copy()
                     D.Draw(img_rect_pil).rectangle([(w_idx*skip,h_idx*skip), 
                                                     (min(args.image_size, w_idx*skip+patchsize), 
-                                                     min(args.image_size, h_idx*skip+patchsize))], outline='yellow', width=2)
+                                                     min(args.image_size, h_idx*skip+patchsize))], outline=target_colors[k], width=2)
                     img_rect_pil.save(os.path.join(save_path, f'{file_name_stats}_rect.png'))
 
                     # visualise softmaxes as heatmap
-                    heatmap = 255 * heatmap_cmap(pfs_upscale[prototype_idx])[..., :3]
-                    heatmap_img = (0.3 * heatmap + 0.7 * img).astype(np.uint8)
+                    pf_vis = pfs_upscale[prototype_idx].copy()
+                    pf_vis = pf_vis / (np.max(pf_vis) + 1e-8)
+                    custom_heatmap_cmap = create_custom_colormap(target_colors[k])
+                    heatmap = (255 * custom_heatmap_cmap(pf_vis)).astype(np.uint8)
+                    alpha = np.dstack(3 * [heatmap[..., 3]]) / 255
+                    heatmap_img = ((1 - alpha) * img + alpha * heatmap[..., :3]).astype(np.uint8)
                     plt.imsave(fname=os.path.join(save_path, f'{k}_heatmap_p{prototype_idx}.png'), arr=heatmap_img)
+                    heatmap_class = ((1 - 0.8 * alpha) * heatmap_class + 0.8 * alpha * heatmap[..., :3]).astype(np.uint8)
+                
+                heatmap_class_pil = Image.fromarray(heatmap_class)
+                # use reversed order so that best pt box is printed on top of others
+                for k in reversed(range(len(topk_class_sim_scores))):
+                    h_idx, w_idx = rects[k]
+                    D.Draw(heatmap_class_pil).rectangle([(w_idx*skip,h_idx*skip), 
+                                                    (min(args.image_size, w_idx*skip+patchsize), 
+                                                     min(args.image_size, h_idx*skip+patchsize))], outline=target_colors[k], width=2)
+                heatmap_class_pil.save(os.path.join(dir, f'heatmap_{pred_class_name}_prototypes.png'))
         
         if i == n_preds:
             break

@@ -137,7 +137,7 @@ def visualize_topk_cls(net, projectloader, device, foldername, args: argparse.Na
         grid = torchvision.utils.make_grid(prototype_patches, nrow=k+1, padding=1)
         image_name = f"grid_topk_{p}"
         if not pretrain:
-            rel_classes = torch.where(cls_weights_p > class_weight_threshold)[0]
+            rel_classes = torch.where(cls_weights_p >= class_weight_threshold)[0]
             rel_classes_sorted = rel_classes[torch.argsort(-cls_weights_p[rel_classes])]
             for rel_class in rel_classes_sorted:
                 cls_name = class2name(rel_class.item())
@@ -273,7 +273,7 @@ def visualize_topk_seg(net, projectloader, device, foldername, args: argparse.Na
         grid = torchvision.utils.make_grid(prototype_patches, nrow=k+1, padding=1)
         image_name = f"grid_topk_{p}"
         if not pretrain:
-            rel_classes = torch.where(cls_weights_p > class_weight_threshold)[0]
+            rel_classes = torch.where(cls_weights_p >= class_weight_threshold)[0]
             rel_classes_sorted = rel_classes[torch.argsort(-cls_weights_p[rel_classes])]
             for rel_class in rel_classes_sorted:
                 cls_name = class2name(rel_class)
